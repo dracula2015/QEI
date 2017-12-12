@@ -1,3 +1,10 @@
+/* 
+ * File:   system.c   
+ * Author: dracula
+ * Comments:
+ * Revision history: EDITION 0.1 
+ */
+
 /******************************************************************************/
 /* Files to Include                                                           */
 /******************************************************************************/
@@ -76,4 +83,3 @@ void ConfigureOscillator(void)
         /* while(OSCCONbits.LOCK != 1); */
 #endif
 }
-

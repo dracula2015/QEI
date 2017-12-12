@@ -1,3 +1,10 @@
+/* 
+ * File:   main.c   
+ * Author: dracula
+ * Comments:
+ * Revision history: EDITION 0.1 
+ */
+
 /******************************************************************************/
 /* Files to Include                                                           */
 /******************************************************************************/
@@ -69,18 +76,20 @@ _FPOR(RST_PWMPIN & PWM1H_ACT_HI & PWM1L_ACT_HI);      // High and Low switches s
 // FICD
 #pragma config ICS = PGD3               // Comm Channel Select (Communicate on PGC3/EMUC3 and PGD3/EMUD3)
 #pragma config JTAGEN = OFF             // JTAG Port Enable (JTAG is Disabled)
+
 /******************************************************************************/
 /* Global Variable Declaration                                                */
 /******************************************************************************/
+/* i.e. uint16_t <variable_name>; */
+/* Assign 32x8word Message Buffers for ECAN1 in DMA RAM */
+unsigned int ecan1MsgBuf[32][8] __attribute__((space(dma)));
+
 char ReceivedChar;
 char TransmitChar;
 bool go = 0;
 bool stop = 0;
 bool direction = 0;
-/* i.e. uint16_t <variable_name>; */
-/******************************************************************************/
-/* Main Program                                                               */
-/******************************************************************************/
+
 int count[2]={0,0};
 int motor = 0;
 int i=0;
@@ -89,6 +98,9 @@ int posHigh = 0;
 //int posLow = 0;
 int QEIPosHigh = 0;
 int QEIPosLow = 0;
+/******************************************************************************/
+/* Main Program                                                               */
+/******************************************************************************/
 int main(void)
 {   
     
@@ -153,6 +165,16 @@ int main(void)
             QEIPosHigh = posHigh & 0x7fff;
             QEIPosLow = POS1CNT;
         }
+        
+        /* WRITE MESSAGE DATA BYTES */
+        ecan1MsgBuf[0][3] = 0xabcd;
+        ecan1MsgBuf[0][4] = 0xabcd;
+        ecan1MsgBuf[0][5] = 0xabcd;
+        ecan1MsgBuf[0][6] = 0xabcd;
+
+        /* REQUEST MESSAGE BUFFER 2 TRANSMISSION */
+        C1TR01CONbits.TXREQ0 = 0x1;
+        
     };
 }
 

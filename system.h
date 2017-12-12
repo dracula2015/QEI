@@ -1,3 +1,14 @@
+/* 
+ * File:   system.h
+ * Author: dracula
+ * Comments:
+ * Revision history: EDITION 0.1 
+ */
+
+// This is a guard condition so that contents of this file are not included more than once.  
+#ifndef XC_HEADER_SYSTEM_H
+#define	XC_HEADER_SYSTEM_H
+
 /******************************************************************************/
 /* System Level #define Macros                                                */
 /******************************************************************************/
@@ -18,3 +29,4 @@ go here. */
 
 void ConfigureOscillator(void); /* Handles clock switching/osc initialization */
 
+#endif
