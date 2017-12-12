@@ -29,4 +29,25 @@ void QEInit(void);
 void PwmInit(void);
 void Delay(int i);
 
+/* Message structure in RAM */
+typedef struct{
+    /* Keep track of the buffer status */
+    unsigned char buffer_status;
+    
+    /* RTR message or data message */
+    unsigned char message_type;
+    
+    /* Frame type extended or standard */
+    unsigned char frame_type;
+    
+    /* Buffer being used to send and receive messages */
+    unsigned char buffer;
+    
+    /* 29 bit ID max of 0x1FFF FFFF */
+    /* 11 bit ID max of 0x7FF */
+    unsigned long id;
+    unsigned char data[8];
+    unsigned char data_length;
+}mID;
+
 #endif

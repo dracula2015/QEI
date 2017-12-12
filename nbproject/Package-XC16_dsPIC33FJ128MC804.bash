@@ -10,9 +10,9 @@ CND_CONF=XC16_dsPIC33FJ128MC804
 CND_DISTDIR=dist
 TMPDIR=build/${CND_CONF}/${IMAGE_TYPE}/tmp-packaging
 TMPDIRNAME=tmp-packaging
-OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/dspic33_c_OMRS_Mini_Board.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-OUTPUT_BASENAME=dspic33_c_OMRS_Mini_Board.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-PACKAGE_TOP_DIR=dspic33comrsminiboard/
+OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/QEI.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+OUTPUT_BASENAME=QEI.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+PACKAGE_TOP_DIR=qei/
 
 # Functions
 function checkReturnCode
@@ -57,15 +57,15 @@ mkdir -p ${TMPDIR}
 
 # Copy files and create directories and links
 cd "${TOP}"
-makeDirectory ${TMPDIR}/dspic33comrsminiboard/bin
+makeDirectory ${TMPDIR}/qei/bin
 copyFileToTmpDir "${OUTPUT_PATH}" "${TMPDIR}/${PACKAGE_TOP_DIR}bin/${OUTPUT_BASENAME}" 0755
 
 
 # Generate tar file
 cd "${TOP}"
-rm -f ${CND_DISTDIR}/${CND_CONF}/package/dspic33comrsminiboard.tar
+rm -f ${CND_DISTDIR}/${CND_CONF}/package/qei.tar
 cd ${TMPDIR}
-tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/dspic33comrsminiboard.tar *
+tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/qei.tar *
 checkReturnCode
 
 # Cleanup
