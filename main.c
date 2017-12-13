@@ -82,7 +82,13 @@ _FPOR(RST_PWMPIN & PWM1H_ACT_HI & PWM1L_ACT_HI);      // High and Low switches s
 /******************************************************************************/
 /* i.e. uint16_t <variable_name>; */
 /* Assign 32x8word Message Buffers for ECAN1 in DMA RAM */
+#ifdef MANUAL
 unsigned int ecan1MsgBuf[32][8] __attribute__((space(dma)));
+#endif
+
+ECAN1MSGBUF  ecan1MsgBuf __attribute__((space(dma)));
+mID canTxMessage;
+mID canRxMessage;
 
 char ReceivedChar;
 char TransmitChar;
@@ -109,7 +115,30 @@ int main(void)
     /* Initialize IO ports and peripherals */
     InitApp();
     /* TODO <INSERT USER APPLICATION CODE HERE> */
- 
+
+    /* configure and send a message */
+    canTxMessage.message_type=CAN_MSG_DATA;
+    //canTxMessage.message_type=CAN_MSG_RTR;
+    canTxMessage.frame_type=CAN_FRAME_EXT;
+    //canTxMessage.frame_type=CAN_FRAME_STD;
+    canTxMessage.buffer=0;
+    canTxMessage.id=0x123;
+    canTxMessage.data[0]=0x55;
+    canTxMessage.data[1]=0x55;
+    canTxMessage.data[2]=0x55;
+    canTxMessage.data[3]=0x55;
+    canTxMessage.data[4]=0x55;
+    canTxMessage.data[5]=0x55;
+    canTxMessage.data[6]=0x55;
+    canTxMessage.data[7]=0x55;
+    canTxMessage.data_length=8;
+
+    /* Delay for a second */
+    Delay(Delay_1S_Cnt);
+
+    /* send a CAN message */
+    sendECAN(&canTxMessage);
+    
     while(1)
     {
         if(U1STAbits.PERR==1)
@@ -165,16 +194,47 @@ int main(void)
             QEIPosHigh = posHigh & 0x7fff;
             QEIPosLow = POS1CNT;
         }
-        
-        /* WRITE MESSAGE DATA BYTES */
-        ecan1MsgBuf[0][3] = 0xabcd;
-        ecan1MsgBuf[0][4] = 0xabcd;
-        ecan1MsgBuf[0][5] = 0xabcd;
-        ecan1MsgBuf[0][6] = 0xabcd;
 
-        /* REQUEST MESSAGE BUFFER 2 TRANSMISSION */
+        /* check to see when a message is received and move the message 
+		into RAM and parse the message */ 
+		if(canRxMessage.buffer_status==CAN_BUF_FULL)
+		{
+			rxECAN(&canRxMessage);			
+			/* reset the flag when done */
+			canRxMessage.buffer_status=CAN_BUF_EMPTY;
+		}
+		else
+		;
+#ifdef MANUAL
+        {
+            /* WRITE TO MESSAGE BUFFER 0 */
+            /* CiTRBnSID = 0bxxx1 0010 0011 1101
+            SID<10:0> : 0b100 1000 1111
+            SRR = 0b0
+            IDE = 0b1 */
+            ecan1MsgBuf[0][0] = 0x123D;
+
+            /* CiTRBnEID = 0bxxxx 1111 0000 0000
+            EID<17:6> = 0b1111 0000 0000 */
+            ecan1MsgBuf[0][1] = 0x0F00;
+
+            /* CiTRBnDLC = 0b0000 1100 xxx0 1000
+            EID<5:0> = 0b000011
+            RTR = 0b0
+            RB1 = 0b0
+            RB0 = 0b0
+            DLC = 0b1000 */
+            ecan1MsgBuf[0][2] = 0x0C08;
+            /* WRITE MESSAGE DATA BYTES */
+            ecan1MsgBuf[0][3] = 0xabcd;
+            ecan1MsgBuf[0][4] = 0xabcd;
+            ecan1MsgBuf[0][5] = 0xabcd;
+            ecan1MsgBuf[0][6] = 0xabcd;
+        }
+
+        /* REQUEST MESSAGE BUFFER 0 TRANSMISSION */
         C1TR01CONbits.TXREQ0 = 0x1;
-        
+#endif        
     };
 }
 
@@ -221,4 +281,46 @@ void __attribute__((interrupt, auto_psv)) _QEI1Interrupt(void)
     if(QEI1CONbits.UPDN == 1){posHigh += 1;}
     else {posHigh -= 1;}
     IFS3bits.QEI1IF = 0;
+}
+
+void __attribute__((interrupt,no_auto_psv))_C1Interrupt(void)  
+{
+	/* check to see if the interrupt is caused by receive */     	 
+    if(C1INTFbits.RBIF)
+    {
+	    /* check to see if buffer 1 is full */
+	    if(C1RXFUL1bits.RXFUL1)
+	    {			
+			/* set the buffer full flag and the buffer received flag */
+			canRxMessage.buffer_status=CAN_BUF_FULL;
+			canRxMessage.buffer=1;	
+		}		
+		/* check to see if buffer 2 is full */
+		else if(C1RXFUL1bits.RXFUL2)
+		{
+			/* set the buffer full flag and the buffer received flag */
+			canRxMessage.buffer_status=CAN_BUF_FULL;
+			canRxMessage.buffer=2;					
+		}
+		/* check to see if buffer 3 is full */
+		else if(C1RXFUL1bits.RXFUL3)
+		{
+			/* set the buffer full flag and the buffer received flag */
+			canRxMessage.buffer_status=CAN_BUF_FULL;
+			canRxMessage.buffer=3;					
+		}
+		else;
+		/* clear flag */
+		C1INTFbits.RBIF = 0;
+	}
+	else if(C1INTFbits.TBIF)
+    {
+	    /* clear flag */
+		C1INTFbits.TBIF = 0;	    
+	}
+	else;
+	
+	/* clear interrupt flag */
+	IFS2bits.C1IF=0;
+    
 }

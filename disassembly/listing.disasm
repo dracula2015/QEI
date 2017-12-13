@@ -1,0 +1,1544 @@
+Disassembly Listing for dspic33_c_OMRS_Mini_Board
+Generated From:
+/home/dracula/MPLABXProjects/QEI/dist/XC16_dsPIC33FJ128MC804/production/QEI.production.elf
+Dec 13, 2017 1:13:05 PM
+
+---  /home/dracula/MPLABXProjects/QEI/user.c  -----------------------------------------------------------
+1:                 /* 
+2:                  * File:   user.c   
+3:                  * Author: dracula
+4:                  * Comments:
+5:                  * Revision history: EDITION 0.1 
+6:                  */
+7:                 
+8:                 /******************************************************************************/
+9:                 /* Files to Include                                                           */
+10:                /******************************************************************************/
+11:                
+12:                /* Device header file */
+13:                #if defined(__XC16__)
+14:                    #include <xc.h>
+15:                #elif defined(__C30__)
+16:                    #if defined(__dsPIC33E__)
+17:                    	#include <p33Exxxx.h>
+18:                    #elif defined(__dsPIC33F__)
+19:                    	#include <p33Fxxxx.h>
+20:                    #endif
+21:                #endif
+22:                
+23:                #include <stdint.h>          /* For uint16_t definition                       */
+24:                #include <stdbool.h>         /* For true/false definition                     */
+25:                
+26:                #include "user.h"            /* variables/params used by user.c               */
+27:                
+28:                #define FCY 40000000
+29:                #define BAUDRATE 57600//9600  
+30:                #define BRGVAL ((FCY/BAUDRATE)/16)-1
+31:                #define DELAY_105us asm volatile ("REPEAT,#4201");Nop();//105us delay 
+32:                
+33:                /* Assign 32x8word Message Buffers for ECAN1 in DMA RAM */
+34:                extern unsigned int ecan1MsgBuf[32][8] __attribute__((space(dma)));
+35:                /******************************************************************************/
+36:                /* User Functions                                                             */
+37:                /******************************************************************************/
+38:                
+39:                /* <Initialize variables in user.h and insert code for user algorithms.> */
+40:                
+41:                void InitApp(void)
+42:                {
+0003E8  FA0000     LNK #0x0
+43:                    /* TODO Initialize User Ports/Peripherals/Project here */
+44:                    //*************************************************************
+45:                    // Unlock Registers
+46:                    //*************************************************************
+47:                    __builtin_write_OSCCONL(OSCCON & ~(1<<6)); 
+0003EA  803A11     MOV OSCCON, W1
+0003EC  2FFBF0     MOV #0xFFBF, W0
+0003EE  608100     AND W1, W0, W2
+0003F0  200460     MOV #0x46, W0
+0003F2  200571     MOV #0x57, W1
+0003F4  207423     MOV #0x742, W3
+0003F6  784980     MOV.B W0, [W3]
+0003F8  784981     MOV.B W1, [W3]
+0003FA  784982     MOV.B W2, [W3]
+48:                
+49:                    //*************************************************************
+50:                    // Configure Input Functions
+51:                    // (See Table 30-1)
+52:                    //*************************************************************
+53:                    //***************************
+54:                    // Assign U1Rx To Pin RP20
+55:                    //***************************
+56:                    //RPINR18bits.U1RXR = 0;
+57:                    //RPINR18bits.U1RXR = 19;
+58:                    RPINR18bits.U1RXR = 20;
+0003FC  803521     MOV RPINR18, W1
+0003FE  2FFE00     MOV #0xFFE0, W0
+000400  608000     AND W1, W0, W0
+000402  B30140     IOR #0x14, W0
+000404  883520     MOV W0, RPINR18
+59:                    //***************************
+60:                    // Assign U1CTS To Pin RP1
+61:                    //***************************
+62:                    //RPINR18bits.U1CTSR = 1;
+63:                    
+64:                    //*************************************************************
+65:                    // Configure Output Functions
+66:                    // (See Table 30-2)
+67:                    //*************************************************************
+68:                    //***************************
+69:                    // Assign U1Tx To Pin RP4
+70:                    //***************************
+71:                    //RPOR1bits.RP2R = 3;
+72:                    //RPOR6bits.RP12R = 3;
+73:                    RPOR2bits.RP4R = 3;
+000406  803621     MOV RPOR2, W1
+000408  2FFE00     MOV #0xFFE0, W0
+00040A  608000     AND W1, W0, W0
+00040C  B30030     IOR #0x3, W0
+00040E  883620     MOV W0, RPOR2
+74:                    //***************************
+75:                    // Assign U1RTS To Pin RP3
+76:                    //***************************
+77:                    //RPOR1bits.RP3R = 4;
+78:                    
+79:                    //*************************************************************
+80:                    //Assign QEI1 Phase A To Pin RP10
+81:                    //*************************************************************
+82:                    RPINR14bits.QEA1R = 10;
+000410  8034E1     MOV RPINR14, W1
+000412  2FFE00     MOV #0xFFE0, W0
+000414  608000     AND W1, W0, W0
+000416  B300A0     IOR #0xA, W0
+000418  8834E0     MOV W0, RPINR14
+83:                    
+84:                    //*************************************************************
+85:                    //Assign QEI1 Phase B To Pin RP11
+86:                    //*************************************************************
+87:                    RPINR14bits.QEB1R = 11;
+00041A  8034E1     MOV RPINR14, W1
+00041C  2E0FF0     MOV #0xE0FF, W0
+00041E  608080     AND W1, W0, W1
+000420  20B000     MOV #0xB00, W0
+000422  700001     IOR W0, W1, W0
+000424  8834E0     MOV W0, RPINR14
+88:                    
+89:                    //*************************************************************
+90:                    //Assign QEI1 INDEX To Pin RP25
+91:                    //*************************************************************
+92:                    RPINR15bits.INDX1R = 25;
+000426  8034F1     MOV RPINR15, W1
+000428  2FFE00     MOV #0xFFE0, W0
+00042A  608000     AND W1, W0, W0
+00042C  B30190     IOR #0x19, W0
+00042E  8834F0     MOV W0, RPINR15
+93:                    
+94:                    //*************************************************************
+95:                    // Configure ECAN Module
+96:                    //*************************************************************
+97:                    //***************************
+98:                    // Assign ECAN1 C1RxD To Pin RP24
+99:                    //***************************
+100:                   RPINR26bits.C1RXR = 24;
+000430  8035A1     MOV RPINR26, W1
+000432  2FFE00     MOV #0xFFE0, W0
+000434  608000     AND W1, W0, W0
+000436  B30180     IOR #0x18, W0
+000438  8835A0     MOV W0, RPINR26
+101:                   //***************************
+102:                   // Assign ECAN1 C1TxD To Pin RP14
+103:                   //***************************
+104:                   RPOR7bits.RP14R = 14;
+00043A  803671     MOV RPOR7, W1
+00043C  2FFE00     MOV #0xFFE0, W0
+00043E  608000     AND W1, W0, W0
+000440  B300E0     IOR #0xE, W0
+000442  883670     MOV W0, RPOR7
+105:                   //*************************************************************
+106:                   // Lock Registers
+107:                   //*************************************************************
+108:                   __builtin_write_OSCCONL(OSCCON | (1<<6));
+000444  803A10     MOV OSCCON, W0
+000446  780100     MOV W0, W2
+000448  A06002     BSET W2, #6
+00044A  200460     MOV #0x46, W0
+00044C  200571     MOV #0x57, W1
+00044E  207423     MOV #0x742, W3
+000450  784980     MOV.B W0, [W3]
+000452  784981     MOV.B W1, [W3]
+000454  784982     MOV.B W2, [W3]
+109:               
+110:                   /* Setup analog functionality and port direction */
+111:                   TRISAbits.TRISA7=0;
+000456  A9E2C0     BCLR TRISA, #7
+112:                   TRISAbits.TRISA10=0;
+000458  A942C1     BCLR 0x2C1, #2
+113:                   /*
+114:                   TRISAbits.TRISA0 = 0;
+115:                   TRISAbits.TRISA1 = 0;
+116:                   TRISBbits.TRISB2 = 1;
+117:                   TRISBbits.TRISB5 = 1;
+118:                   */
+119:                   //TRISB = 0xFFFF;
+120:                   /* Initialize peripherals */
+121:                   DMAInit();
+00045A  0700A7     RCALL DMAInit
+122:                   ECANInit();
+00045C  07003C     RCALL ECANInit
+123:                   UartInit();
+00045E  070012     RCALL UartInit
+124:                   QEInit();
+000460  07002A     RCALL QEInit
+125:                   PwmInit();
+000462  070002     RCALL PwmInit
+126:                   
+127:               }
+000464  FA8000     ULNK
+000466  060000     RETURN
+128:               
+129:               void PwmInit(void)
+130:               {
+000468  FA0000     LNK #0x0
+131:                   #if 1
+132:                       /*
+133:                        * PxTPER = FCY/(FPWM*PxTMR PreScaler)-1
+134:                        * PxTMR PreScaler=1:1
+135:                        * FPWM=20KHz
+136:                        * FCY=40MHz, refer to function ConfigureOscillator
+137:                        * PxTPER=1999
+138:                        * 0x07CF
+139:                        * 0b0000 0111 1100 1111
+140:                        */
+141:                       P2TCON=0x8000;   //or P1TCONbits.PTEN = 1;
+00046A  280000     MOV #0x8000, W0
+00046C  882E00     MOV W0, P2TCON
+142:                       P2TMR=0x0000;
+00046E  EF25C2     CLR P2TMR
+143:                       P2TPER=1999;     // period:50us
+000470  207CF0     MOV #0x7CF, W0
+000472  882E20     MOV W0, P2TPER
+144:                       //P1SECMP=0x0000;
+145:                       PWM2CON1=0x0FFF;
+000474  20FFF0     MOV #0xFFF, W0
+000476  882E40     MOV W0, PWM2CON1
+146:                       PWM2CON2=0x0040;
+000478  200400     MOV #0x40, W0
+00047A  882E50     MOV W0, PWM2CON2
+147:                       P2OVDCON=0xFF00;
+00047C  2FF000     MOV #0xFF00, W0
+00047E  882EA0     MOV W0, P2OVDCON
+148:                       //P1FLTACON=0x0080;
+149:                       //P1DTCON1=0x0000;
+150:                       //P1DTCON2=0x0000;
+151:                       //P2DC1=100;
+152:                       // LSB is not used for duty cycle, the realy duty cycle count should be PIDC*/2 !!!!!!
+153:                   #endif
+154:               
+155:                   #if 0
+156:                   /* Configuration register FPOR */
+157:               
+158:                   /* PWM time base operates in a Free Running mode */
+159:                   P1TCONbits.PTMOD = 0b00;
+160:               
+161:                   /* PWM time base input clock period is TCY (1:1 prescale) */
+162:                   /* PWM time base output post scale is 1:1 */
+163:                   P1TCONbits.PTCKPS = 0b00;
+164:                   P1TCONbits.PTOPS = 0b00;
+165:               
+166:                   /* Choose PWM time period based on input clock selected */
+167:                   /* Refer to Equation: PxTPER=FCY/(FPWM × PxTMR PreScaler)-1*/
+168:                   /* PWM switching frequency is 20 kHz */
+169:                   /* FCY is 40 MHz */
+170:                   P1TPER = 1999;
+171:               
+172:                   /* PWM I/O pairs 1 to 3 are in complementary mode */
+173:                   /* PWM pins are enabled for PWM output */
+174:                   PWM1CON1bits.PMOD1 = 0;
+175:                   PWM1CON1bits.PMOD2 = 0;
+176:                   PWM1CON1bits.PMOD3 = 0;
+177:                   PWM1CON1bits.PEN1H = 1;
+178:                   PWM1CON1bits.PEN2H = 1;
+179:                   PWM1CON1bits.PEN3H = 1;
+180:                   PWM1CON1bits.PEN1L = 1;
+181:                   PWM1CON1bits.PEN2L = 1;
+182:                   PWM1CON1bits.PEN3L = 1;
+183:                   /* Immediate update of PWM enabled */
+184:                   PWM1CON2bits.IUE = 1;
+185:               
+186:                   /* PWM I/O pin controlled by PWM Generator */
+187:                   P1OVDCONbits.POVD3H = 1;
+188:                   P1OVDCONbits.POVD2H = 1;
+189:                   P1OVDCONbits.POVD1H = 1;
+190:                   P1OVDCONbits.POVD3L = 1;
+191:                   P1OVDCONbits.POVD2L = 1;
+192:                   P1OVDCONbits.POVD1L = 1;
+193:               
+194:                   /* Initialize duty cycle values for PWM1, PWM2 and PWM3 signals */
+195:                   P1DC1 = 200;
+196:                   P1DC2 = 200;
+197:                   P1DC3 = 200;
+198:                   P1TCONbits.PTEN = 1;
+199:                   #endif
+200:               }
+000480  FA8000     ULNK
+000482  060000     RETURN
+201:               
+202:               void UartInit(void)
+203:               {
+000484  FA0000     LNK #0x0
+204:                   int i;
+205:                   U1MODEbits.STSEL = 0; // 1-stop bit
+000486  A90220     BCLR U1MODE, #0
+206:                   U1MODEbits.PDSEL = 0; // No Parity, 8-data bits
+000488  801101     MOV U1MODE, W1
+00048A  2FFF90     MOV #0xFFF9, W0
+00048C  608000     AND W1, W0, W0
+00048E  881100     MOV W0, U1MODE
+207:                   U1MODEbits.ABAUD = 0; // Auto-Baud Disabled
+000490  A9A220     BCLR U1MODE, #5
+208:                   U1MODEbits.BRGH = 0; // Low Speed mode
+000492  A96220     BCLR U1MODE, #3
+209:                   U1MODEbits.LPBACK = 0;
+000494  A9C220     BCLR U1MODE, #6
+210:                   U1BRG = BRGVAL; // BAUD Rate Setting for 57600
+000496  2002A0     MOV #0x2A, W0
+000498  881140     MOV W0, U1BRG
+211:                   U1STAbits.UTXISEL0 = 0; // Interrupt after one Tx character is transmitted
+00049A  A9A223     BCLR 0x223, #5
+212:                   U1STAbits.UTXISEL1 = 0;
+00049C  A9E223     BCLR 0x223, #7
+213:                   U1STAbits.URXISEL = 0;
+00049E  801111     MOV U1STA, W1
+0004A0  2FF3F0     MOV #0xFF3F, W0
+0004A2  608000     AND W1, W0, W0
+0004A4  881110     MOV W0, U1STA
+214:                   IEC0bits.U1TXIE = 1; // Enable UART Tx interrupt
+0004A6  A88095     BSET 0x95, #4
+215:                   IEC0bits.U1RXIE = 1; // Enable UART Rx interrupt
+0004A8  A86095     BSET 0x95, #3
+216:                   U1MODEbits.UARTEN = 1; // Enable UART
+0004AA  A8E221     BSET 0x221, #7
+217:                   U1STAbits.UTXEN = 1; // Enable UART Tx
+0004AC  A84223     BSET 0x223, #2
+218:                   /* wait at least 104 usec (1/9600) before sending first char */
+219:                   DELAY_105us
+0004AE  091069     REPEAT #0x1069
+0004B0  000000     NOP
+220:               //    for(i = 0; i < 4160; i++)
+221:               //    {
+222:               //    Nop();
+223:               //    }
+224:               
+225:               }
+0004B2  FA8000     ULNK
+0004B4  060000     RETURN
+226:               
+227:               void QEInit(void)
+228:               {
+0004B6  FA0000     LNK #0x0
+229:               
+230:                   MAX1CNT = 36351; //512*71-1=36351
+0004B8  28DFF0     MOV #0x8DFF, W0
+0004BA  880F30     MOV W0, MAX1CNT
+231:                   IEC3bits.QEI1IE = 1;
+0004BC  A8409B     BSET 0x9B, #2
+232:                   DFLT1CONbits.QEOUT = 1;
+0004BE  A8E1E2     BSET DFLT1CON, #7
+233:                   DFLT1CONbits.QECK = 2;//1:4????
+0004C0  800F11     MOV DFLT1CON, W1
+0004C2  2FF8F0     MOV #0xFF8F, W0
+0004C4  608000     AND W1, W0, W0
+0004C6  A05000     BSET W0, #5
+0004C8  880F10     MOV W0, DFLT1CON
+234:                   QEI1CONbits.QEIM = 7;
+0004CA  800F01     MOV QEI1CON, W1
+0004CC  207000     MOV #0x700, W0
+0004CE  700001     IOR W0, W1, W0
+0004D0  880F00     MOV W0, QEI1CON
+235:                   /*
+236:                   QEI1CONbits.QEIM = 6;
+237:                   QEI1CONbits.POSRES = 1;
+238:                   */
+239:               }
+0004D2  FA8000     ULNK
+0004D4  060000     RETURN
+240:               
+241:               void ECANInit(void)
+242:               {   
+0004D6  FA0000     LNK #0x0
+243:                   /* Set the ECAN module for Configuration Mode before writing into the Baud
+244:                   Rate Control Registers*/
+245:                   C1CTRL1bits.REQOP = 4;
+0004D8  802001     MOV C1CTRL1, W1
+0004DA  2F8FF0     MOV #0xF8FF, W0
+0004DC  608000     AND W1, W0, W0
+0004DE  A0A000     BSET W0, #10
+0004E0  882000     MOV W0, C1CTRL1
+246:                   /* Wait for the ECAN module to enter into Configuration Mode */
+247:                   while(C1CTRL1bits.OPMODE != 4);
+0004E2  000000     NOP
+0004E4  802001     MOV C1CTRL1, W1
+0004E6  200E00     MOV #0xE0, W0
+0004E8  608080     AND W1, W0, W1
+0004EA  200800     MOV #0x80, W0
+0004EC  508F80     SUB W1, W0, [W15]
+0004EE  3AFFFA     BRA NZ, 0x4E4
+248:                   /* Phase Segment 1 time is 8 TQ */
+249:                   C1CFG2bits.SEG1PH = 0x7;
+0004F0  802091     MOV C1CFG2, W1
+0004F2  200380     MOV #0x38, W0
+0004F4  700001     IOR W0, W1, W0
+0004F6  882090     MOV W0, C1CFG2
+250:                   /* Phase Segment 2 time is set to be programmable */
+251:                   C1CFG2bits.SEG2PHTS = 0x1;
+0004F8  A8E412     BSET C1CFG2, #7
+252:                   /* Phase Segment 2 time is 6 TQ */
+253:                   C1CFG2bits.SEG2PH = 0x5;
+0004FA  802091     MOV C1CFG2, W1
+0004FC  2F8FF0     MOV #0xF8FF, W0
+0004FE  608080     AND W1, W0, W1
+000500  205000     MOV #0x500, W0
+000502  700001     IOR W0, W1, W0
+000504  882090     MOV W0, C1CFG2
+254:                   /* Propagation Segment time is 5 TQ */
+255:                   C1CFG2bits.PRSEG = 0x4;
+000506  802091     MOV C1CFG2, W1
+000508  2FFF80     MOV #0xFFF8, W0
+00050A  608000     AND W1, W0, W0
+00050C  A02000     BSET W0, #2
+00050E  882090     MOV W0, C1CFG2
+256:                   /* Bus line is sampled three times at the sample point */
+257:                   C1CFG2bits.SAM = 0x1;
+000510  A8C412     BSET C1CFG2, #6
+258:                   /* Synchronization Jump Width set to 4 TQ */
+259:                   C1CFG1bits.SJW = 0x3;
+000512  802081     MOV C1CFG1, W1
+000514  200C00     MOV #0xC0, W0
+000516  700001     IOR W0, W1, W0
+000518  882080     MOV W0, C1CFG1
+260:                   /* Baud Rate Prescaler bits set to 1:1, i.e., TQ = (2*1*1)/ FCAN */
+261:                   C1CFG1bits.BRP = 0x0 ;
+00051A  802081     MOV C1CFG1, W1
+00051C  2FFC00     MOV #0xFFC0, W0
+00051E  608000     AND W1, W0, W0
+000520  882080     MOV W0, C1CFG1
+262:                   
+263:                   /* Enable window to access acceptance filter registers */
+264:                   C1CTRL1bits.WIN = 0x1;
+000522  A80400     BSET C1CTRL1, #0
+265:                   /* Select Acceptance Filter Mask 0 for Acceptance Filter 0 */
+266:                   C1FMSKSEL1bits.F0MSK=0x0;
+000524  8020C1     MOV C1FMSKSEL1, W1
+000526  2FFFC0     MOV #0xFFFC, W0
+000528  608000     AND W1, W0, W0
+00052A  8820C0     MOV W0, C1FMSKSEL1
+267:                   /* Configure Acceptance Filter Mask 0 register to mask EID<5:0>
+268:                   Mask Bits (29-bits) : 0b0 0000 0000 0000 0000 0000 0011 1111
+269:                   SID<10:0> : 0b00000000000 ..SID<10:0> or EID<28:18>
+270:                   EID<17:16> : 0b00 ..EID<17:16>
+271:                   EID<15:0> : 0b0000000000111111 ..EID<15:0> */
+272:                   C1RXM0SIDbits.SID = 0x0;
+00052C  802180     MOV C1TR01CON, W0
+00052E  60007F     AND W0, #0x1F, W0
+000530  882180     MOV W0, C1TR01CON
+273:                   C1RXM0SIDbits.EID = 0x0;
+000532  802181     MOV C1TR01CON, W1
+000534  2FFFC0     MOV #0xFFFC, W0
+000536  608000     AND W1, W0, W0
+000538  882180     MOV W0, C1TR01CON
+274:                   C1RXM0EIDbits.EID = 0x3F;
+00053A  2003F0     MOV #0x3F, W0
+00053C  882190     MOV W0, C1TR23CON
+275:                   /* Configure Acceptance Filter 0 to match extended identifier
+276:                   Filter Bits (29-bits) : 0b1 1110 0000 0011 1111 0101 10xx xxxx
+277:                   SID<10:0> : 0b11110000000 ..SID<10:0> or EID<28:18>
+278:                   EID<17:16> : 0b11 ..EID<17:16>
+279:                   EID<15:0> : 0b1111010110xxxxxx ..EID<15:0> */
+280:                   C1RXF0SIDbits.SID = 0x780;
+00053E  802200     MOV C1RXD, W0
+000540  6000FF     AND W0, #0x1F, W1
+000542  2F0000     MOV #0xF000, W0
+000544  700001     IOR W0, W1, W0
+000546  882200     MOV W0, C1RXD
+281:                   C1RXF0SIDbits.EID = 0x3;
+000548  802200     MOV C1RXD, W0
+00054A  B30030     IOR #0x3, W0
+00054C  882200     MOV W0, C1RXD
+282:                   C1RXM0EIDbits.EID = 0xF580;
+00054E  2F5800     MOV #0xF580, W0
+000550  882190     MOV W0, C1TR23CON
+283:                   /* Acceptance Filter 0 to check for Extended Identifier */
+284:                   C1RXM0SIDbits.MIDE = 0x1;
+000552  A86430     BSET C1TR01CON, #3
+285:                   C1RXF0SIDbits.EXIDE= 0x1;
+000554  A86440     BSET C1RXD, #3
+286:                   /* Acceptance Filter 0 to use FIFO Message Buffer to store message */
+287:                   C1BUFPNT1bits.F0BP = 0xF;
+000556  802100     MOV C1RXFUL1, W0
+000558  B300F0     IOR #0xF, W0
+00055A  882100     MOV W0, C1RXFUL1
+288:                   /* Enable Acceptance Filter 0 */
+289:                   C1FEN1bits.FLTEN0=0x1;
+00055C  A80414     BSET C1FEN1, #0
+290:                   /* Clear Window Bit to Access ECAN Control Registers */
+291:                   C1CTRL1bits.WIN=0x0;
+00055E  A90400     BCLR C1CTRL1, #0
+292:                   C1FCTRLbits.DMABS = 0x6;
+000560  802031     MOV C1FCTRL, W1
+000562  21FFF0     MOV #0x1FFF, W0
+000564  608080     AND W1, W0, W1
+000566  2C0000     MOV #0xC000, W0
+000568  700001     IOR W0, W1, W0
+00056A  882030     MOV W0, C1FCTRL
+293:                   C1FCTRLbits.FSA = 0x8;
+00056C  802031     MOV C1FCTRL, W1
+00056E  2FFE00     MOV #0xFFE0, W0
+000570  608000     AND W1, W0, W0
+000572  A03000     BSET W0, #3
+000574  882030     MOV W0, C1FCTRL
+294:                   /* Put the ECAN Module into Normal Mode Operating Mode*/
+295:                   C1CTRL1bits.REQOP = 0;
+000576  802001     MOV C1CTRL1, W1
+000578  2F8FF0     MOV #0xF8FF, W0
+00057A  608000     AND W1, W0, W0
+00057C  882000     MOV W0, C1CTRL1
+296:                   /* Wait for the ECAN module to enter into Normal Operating Mode */
+297:                   while(C1CTRL1bits.OPMODE != 0);
+00057E  000000     NOP
+000580  802001     MOV C1CTRL1, W1
+000582  200E00     MOV #0xE0, W0
+000584  608000     AND W1, W0, W0
+000586  E00000     CP0 W0
+000588  3AFFFB     BRA NZ, 0x580
+298:               
+299:                   /* Configure Message Buffer 0-7 for Transmission and assign priority*/
+300:                   C1TR01CONbits.TXEN0 = 0x1;
+00058A  A8E430     BSET C1TR01CON, #7
+301:                   C1TR01CONbits.TXEN1 = 0x1;
+00058C  A8E431     BSET 0x431, #7
+302:                   C1TR23CONbits.TXEN2 = 0x1;
+00058E  A8E432     BSET C1TR23CON, #7
+303:                   C1TR23CONbits.TXEN3 = 0x1;
+000590  A8E433     BSET 0x433, #7
+304:                   C1TR45CONbits.TXEN4 = 0x1;
+000592  A8E434     BSET C1TR45CON, #7
+305:                   C1TR45CONbits.TXEN5 = 0x1;
+000594  A8E435     BSET 0x435, #7
+306:                   C1TR67CONbits.TXEN6 = 0x1;
+000596  A8E436     BSET C1TR67CON, #7
+307:                   C1TR67CONbits.TXEN7 = 0x1;
+000598  A8E437     BSET 0x437, #7
+308:                   //C1TR01CONbits.TX0PRI = 0x3;
+309:                   //C1TR01CONbits.TX1PRI = 0x2;
+310:                   //C1TR23CONbits.TX2PRI = 0x1;
+311:                   //C1TR23CONbits.TX3PRI = 0x0;
+312:                   
+313:                   /* WRITE TO MESSAGE BUFFER 0 */
+314:                   /* CiTRBnSID = 0bxxx1 0010 0011 1101
+315:                   SID<10:0> : 0b100 1000 1111
+316:                   SRR = 0b0
+317:                   IDE = 0b1 */
+318:                   ecan1MsgBuf[0][0] = 0x123D;
+00059A  2123D0     MOV #0x123D, W0
+00059C  8A3000     MOV W0, ecan1MsgBuf
+319:               
+320:                   /* CiTRBnEID = 0bxxxx 1111 0000 0000
+321:                   EID<17:6> = 0b1111 0000 0000 */
+322:                   ecan1MsgBuf[0][1] = 0x0F00;
+00059E  20F000     MOV #0xF00, W0
+0005A0  8A3010     MOV W0, 0x4602
+323:               
+324:                   /* CiTRBnDLC = 0b0000 1100 xxx0 1000
+325:                   EID<5:0> = 0b000011
+326:                   RTR = 0b0
+327:                   RB1 = 0b0
+328:                   RB0 = 0b0
+329:                   DLC = 0b1000 */
+330:                   ecan1MsgBuf[0][2] = 0x0C08;
+0005A2  20C080     MOV #0xC08, W0
+0005A4  8A3020     MOV W0, 0x4604
+331:                   
+332:               }
+0005A6  FA8000     ULNK
+0005A8  060000     RETURN
+333:               
+334:               void DMAInit(void)
+335:               {
+0005AA  FA0000     LNK #0x0
+336:                   
+337:                   /* Data Transfer Size: Word Transfer Mode */
+338:                   DMA0CONbits.SIZE = 0x0;
+0005AC  A9C381     BCLR 0x381, #6
+339:                   /* Data Transfer Direction: DMA RAM to Peripheral */
+340:                   DMA0CONbits.DIR = 0x1;
+0005AE  A8A381     BSET 0x381, #5
+341:                   /* DMA Addressing Mode: Peripheral Indirect Addressing mode */
+342:                   DMA0CONbits.AMODE = 0x2;
+0005B0  801C01     MOV DMA0CON, W1
+0005B2  2FFCF0     MOV #0xFFCF, W0
+0005B4  608000     AND W1, W0, W0
+0005B6  A05000     BSET W0, #5
+0005B8  881C00     MOV W0, DMA0CON
+343:                   /* Operating Mode: Continuous, Ping-Pong modes disabled */
+344:                   DMA0CONbits.MODE = 0x0;
+0005BA  801C01     MOV DMA0CON, W1
+0005BC  2FFFC0     MOV #0xFFFC, W0
+0005BE  608000     AND W1, W0, W0
+0005C0  881C00     MOV W0, DMA0CON
+345:                   /* Assign ECAN1 Transmit event for DMA Channel 0 */
+346:                   DMA0REQ = 70;
+0005C2  200460     MOV #0x46, W0
+0005C4  881C10     MOV W0, DMA0REQ
+347:                   /* Set Number of DMA Transfer per ECAN message to 8 words */
+348:                   DMA0CNT = 7;
+0005C6  200070     MOV #0x7, W0
+0005C8  881C50     MOV W0, DMA0CNT
+349:                   /* Peripheral Address: ECAN1 Transmit Register */
+350:                   DMA0PAD = &C1TXD;
+0005CA  204420     MOV #0x442, W0
+0005CC  881C40     MOV W0, DMA0PAD
+351:                   /* Start Address Offset for ECAN1 Message Buffer 0x0000 */
+352:                   DMA0STA = __builtin_dmaoffset(ecan1MsgBuf);
+0005CE  206000     MOV #0x600, W0
+0005D0  881C20     MOV W0, DMA0STA
+353:                   /* Channel Enable: Enable DMA Channel 0 */
+354:                   DMA0CONbits.CHEN = 0x1;
+0005D2  A8E381     BSET 0x381, #7
+355:                   /* Channel Interrupt Enable: Enable DMA Channel 0 Interrupt */
+356:                   IEC0bits.DMA0IE = 1;
+0005D4  A88094     BSET IEC0, #4
+357:                   
+358:                   /* Data Transfer Size: Word Transfer Mode */
+359:                   DMA1CONbits.SIZE = 0x0;
+0005D6  A9C38D     BCLR 0x38D, #6
+360:                   /* Data Transfer Direction: Peripheral to DMA RAM */
+361:                   DMA1CONbits.DIR = 0x0;
+0005D8  A9A38D     BCLR 0x38D, #5
+362:                   /* DMA Addressing Mode: Peripheral Indirect Addressing mode */
+363:                   DMA1CONbits.AMODE = 0x2;
+0005DA  801C61     MOV DMA1CON, W1
+0005DC  2FFCF0     MOV #0xFFCF, W0
+0005DE  608000     AND W1, W0, W0
+0005E0  A05000     BSET W0, #5
+0005E2  881C60     MOV W0, DMA1CON
+364:                   /* Operating Mode: Continuous, Ping-Pong modes disabled */
+365:                   DMA1CONbits.MODE = 0x0;
+0005E4  801C61     MOV DMA1CON, W1
+0005E6  2FFFC0     MOV #0xFFFC, W0
+0005E8  608000     AND W1, W0, W0
+0005EA  881C60     MOV W0, DMA1CON
+366:                   /* Assign ECAN1 Receive event for DMA Channel 0 */
+367:                   DMA1REQ = 34;
+0005EC  200220     MOV #0x22, W0
+0005EE  881C70     MOV W0, DMA1REQ
+368:                   /* Set Number of DMA Transfer per ECAN message to 8 words */
+369:                   DMA1CNT = 7;
+0005F0  200070     MOV #0x7, W0
+0005F2  881CB0     MOV W0, DMA1CNT
+370:                   /* Peripheral Address: ECAN1 Receive Register */
+371:                   DMA1PAD = &C1RXD;
+0005F4  204400     MOV #0x440, W0
+0005F6  881CA0     MOV W0, DMA1PAD
+372:                   /* Start Address Offset for ECAN1 Message Buffer 0x0000 */
+373:                   //DMA1STA = 0x0000;
+374:                   DMA1STA = __builtin_dmaoffset(ecan1MsgBuf);
+0005F8  206000     MOV #0x600, W0
+0005FA  881C80     MOV W0, DMA1STA
+375:                   /* Channel Enable: Enable DMA Channel 1 */
+376:                   DMA1CONbits.CHEN = 0x1;
+0005FC  A8E38D     BSET 0x38D, #7
+377:                   /* Channel Interrupt Enable: Enable DMA Channel 1 Interrupt */
+378:                   IEC0bits.DMA1IE = 1;
+0005FE  A8C095     BSET 0x95, #6
+379:                   
+380:               }
+000600  FA8000     ULNK
+000602  060000     RETURN
+---  /home/dracula/MPLABXProjects/QEI/traps.c  ----------------------------------------------------------
+1:                 /******************************************************************************/
+2:                 /* Files to Include                                                           */
+3:                 /******************************************************************************/
+4:                 
+5:                 /* Device header file */
+6:                 #if defined(__XC16__)
+7:                     #include <xc.h>
+8:                 #elif defined(__C30__)
+9:                     #if defined(__dsPIC33E__)
+10:                    	#include <p33Exxxx.h>
+11:                    #elif defined(__dsPIC33F__)
+12:                    	#include <p33Fxxxx.h>
+13:                    #endif
+14:                #endif
+15:                
+16:                #include <stdint.h>        /* Includes uint16_t definition */
+17:                #include <stdbool.h>       /* Includes true/false definition */
+18:                
+19:                /******************************************************************************/
+20:                /* Trap Function Prototypes                                                   */
+21:                /******************************************************************************/
+22:                
+23:                /* <Other function prototypes for debugging trap code may be inserted here>   */
+24:                
+25:                /* Use if INTCON2 ALTIVT=1 */
+26:                void __attribute__((interrupt,no_auto_psv)) _OscillatorFail(void);
+27:                void __attribute__((interrupt,no_auto_psv)) _AddressError(void);
+28:                void __attribute__((interrupt,no_auto_psv)) _StackError(void);
+29:                void __attribute__((interrupt,no_auto_psv)) _MathError(void);
+30:                
+31:                #if defined(__HAS_DMA__)
+32:                
+33:                void __attribute__((interrupt,no_auto_psv)) _DMACError(void);
+34:                
+35:                #endif
+36:                
+37:                #if defined(__dsPIC33F__)
+38:                
+39:                /* Use if INTCON2 ALTIVT=0 */
+40:                void __attribute__((interrupt,no_auto_psv)) _AltOscillatorFail(void);
+41:                void __attribute__((interrupt,no_auto_psv)) _AltAddressError(void);
+42:                void __attribute__((interrupt,no_auto_psv)) _AltStackError(void);
+43:                void __attribute__((interrupt,no_auto_psv)) _AltMathError(void);
+44:                
+45:                    #if defined(__HAS_DMA__)
+46:                
+47:                    void __attribute__((interrupt,no_auto_psv)) _AltDMACError(void);
+48:                
+49:                    #endif
+50:                
+51:                #endif
+52:                
+53:                /* Default interrupt handler */
+54:                void __attribute__((interrupt,no_auto_psv)) _DefaultInterrupt(void);
+55:                
+56:                #if defined(__dsPIC33E__)
+57:                
+58:                /* These are additional traps in the 33E family.  Refer to the PIC33E
+59:                migration guide.  There are no Alternate Vectors in the 33E family. */
+60:                void __attribute__((interrupt,no_auto_psv)) _HardTrapError(void);
+61:                void __attribute__((interrupt,no_auto_psv)) _SoftTrapError(void);
+62:                
+63:                #endif
+64:                
+65:                /******************************************************************************/
+66:                /* Trap Handling                                                              */
+67:                /*                                                                            */
+68:                /* These trap routines simply ensure that the device continuously loops       */
+69:                /* within each routine.  Users who actually experience one of these traps     */
+70:                /* can add code to handle the error.  Some basic examples for trap code,      */
+71:                /* including assembly routines that process trap sources, are available at    */
+72:                /* www.microchip.com/codeexamples                                             */
+73:                /******************************************************************************/
+74:                
+75:                /* Primary (non-alternate) address error trap function declarations */
+76:                void __attribute__((interrupt,no_auto_psv)) _OscillatorFail(void)
+77:                {
+0003A6  FA0000     LNK #0x0
+78:                        INTCON1bits.OSCFAIL = 0;        /* Clear the trap flag */
+0003A8  A92080     BCLR INTCON1, #1
+79:                        while(1);
+0003AA  37FFFF     BRA 0x3AA
+80:                }
+81:                
+82:                void __attribute__((interrupt,no_auto_psv)) _AddressError(void)
+83:                {
+0003AC  FA0000     LNK #0x0
+84:                        INTCON1bits.ADDRERR = 0;        /* Clear the trap flag */
+0003AE  A96080     BCLR INTCON1, #3
+85:                        while (1);
+0003B0  37FFFF     BRA 0x3B0
+86:                }
+87:                void __attribute__((interrupt,no_auto_psv)) _StackError(void)
+88:                {
+0003B2  FA0000     LNK #0x0
+89:                        INTCON1bits.STKERR = 0;         /* Clear the trap flag */
+0003B4  A94080     BCLR INTCON1, #2
+90:                        while (1);
+0003B6  37FFFF     BRA 0x3B6
+91:                }
+92:                
+93:                void __attribute__((interrupt,no_auto_psv)) _MathError(void)
+94:                {
+0003B8  FA0000     LNK #0x0
+95:                        INTCON1bits.MATHERR = 0;        /* Clear the trap flag */
+0003BA  A98080     BCLR INTCON1, #4
+96:                        while (1);
+0003BC  37FFFF     BRA 0x3BC
+97:                }
+98:                
+99:                #if defined(__HAS_DMA__)
+100:               
+101:               void __attribute__((interrupt,no_auto_psv)) _DMACError(void)
+102:               {
+0003BE  FA0000     LNK #0x0
+103:                       INTCON1bits.DMACERR = 0;        /* Clear the trap flag */
+0003C0  A9A080     BCLR INTCON1, #5
+104:                       while (1);
+0003C2  37FFFF     BRA 0x3C2
+105:               }
+106:               
+107:               #endif
+108:               
+109:               #if defined(__dsPIC33F__)
+110:               
+111:               /* Alternate address error trap function declarations */
+112:               void __attribute__((interrupt,no_auto_psv)) _AltOscillatorFail(void)
+113:               {
+0003C4  FA0000     LNK #0x0
+114:                       INTCON1bits.OSCFAIL = 0;        /* Clear the trap flag */
+0003C6  A92080     BCLR INTCON1, #1
+115:                       while (1);
+0003C8  37FFFF     BRA 0x3C8
+116:               }
+117:               
+118:               void __attribute__((interrupt,no_auto_psv)) _AltAddressError(void)
+119:               {
+0003CA  FA0000     LNK #0x0
+120:                       INTCON1bits.ADDRERR = 0;        /* Clear the trap flag */
+0003CC  A96080     BCLR INTCON1, #3
+121:                       while (1);
+0003CE  37FFFF     BRA 0x3CE
+122:               }
+123:               
+124:               void __attribute__((interrupt,no_auto_psv)) _AltStackError(void)
+125:               {
+0003D0  FA0000     LNK #0x0
+126:                       INTCON1bits.STKERR = 0;         /* Clear the trap flag */
+0003D2  A94080     BCLR INTCON1, #2
+127:                       while (1);
+0003D4  37FFFF     BRA 0x3D4
+128:               }
+129:               
+130:               void __attribute__((interrupt,no_auto_psv)) _AltMathError(void)
+131:               {
+0003D6  FA0000     LNK #0x0
+132:                       INTCON1bits.MATHERR = 0;        /* Clear the trap flag */
+0003D8  A98080     BCLR INTCON1, #4
+133:                       while (1);
+0003DA  37FFFF     BRA 0x3DA
+134:               }
+135:               
+136:                   #if defined(__HAS_DMA__)
+137:               
+138:                   void __attribute__((interrupt,no_auto_psv)) _AltDMACError(void)
+139:                   {
+0003DC  FA0000     LNK #0x0
+140:                        INTCON1bits.DMACERR = 0;        /* Clear the trap flag */
+0003DE  A9A080     BCLR INTCON1, #5
+141:                        while (1);
+0003E0  37FFFF     BRA 0x3E0
+142:                   }
+143:               
+144:                   #endif
+145:               
+146:               #endif
+147:               
+148:               /******************************************************************************/
+149:               /* Default Interrupt Handler                                                  */
+150:               /*                                                                            */
+151:               /* This executes when an interrupt occurs for an interrupt source with an     */
+152:               /* improperly defined or undefined interrupt handling routine.                */
+153:               /******************************************************************************/
+154:               void __attribute__((interrupt,no_auto_psv)) _DefaultInterrupt(void)
+155:               {
+0003E2  FA0000     LNK #0x0
+156:                       while(1);
+0003E4  37FFFF     BRA 0x3E4
+157:               }
+158:               
+159:               #if defined(__dsPIC33E__)
+160:               
+161:               /* These traps are new to the dsPIC33E family.  Refer to the device Interrupt
+162:               chapter of the FRM to understand trap priority. */
+163:               void __attribute__((interrupt,no_auto_psv)) _HardTrapError(void)
+164:               {
+165:                   while(1);
+166:               }
+167:               void __attribute__((interrupt,no_auto_psv)) _SoftTrapError(void)
+168:               {
+169:                   while(1);
+170:               }
+171:               
+172:               #endif
+---  /home/dracula/MPLABXProjects/QEI/system.c  ---------------------------------------------------------
+1:                 /* 
+2:                  * File:   system.c   
+3:                  * Author: dracula
+4:                  * Comments:
+5:                  * Revision history: EDITION 0.1 
+6:                  */
+7:                 
+8:                 /******************************************************************************/
+9:                 /* Files to Include                                                           */
+10:                /******************************************************************************/
+11:                
+12:                /* Device header file */
+13:                #if defined(__XC16__)
+14:                    #include <xc.h>
+15:                #elif defined(__C30__)
+16:                    #if defined(__dsPIC33E__)
+17:                    	#include <p33Exxxx.h>
+18:                    #elif defined(__dsPIC33F__)
+19:                    	#include <p33Fxxxx.h>
+20:                    #endif
+21:                #endif
+22:                
+23:                #include <stdint.h>          /* For uint16_t definition                       */
+24:                #include <stdbool.h>         /* For true/false definition                     */
+25:                
+26:                #include "system.h"          /* variables/params used by system.c             */
+27:                
+28:                /******************************************************************************/
+29:                /* System Level Functions                                                     */
+30:                /*                                                                            */
+31:                /* Custom oscillator configuration funtions, reset source evaluation          */
+32:                /* functions, and other non-peripheral microcontroller initialization         */
+33:                /* functions get placed in system.c.                                          */
+34:                /*                                                                            */
+35:                /******************************************************************************/
+36:                
+37:                /* Refer to the device Family Reference Manual Oscillator section for
+38:                information about available oscillator configurations.  Typically
+39:                this would involve configuring the oscillator tuning register or clock
+40:                switching useing the compiler's __builtin_write_OSCCON functions.
+41:                Refer to the C Compiler for PIC24 MCUs and dsPIC DSCs User Guide in the
+42:                compiler installation directory /doc folder for documentation on the
+43:                __builtin functions.*/
+44:                
+45:                /* TODO Add clock switching code if appropriate.  An example stub is below.   */
+46:                void ConfigureOscillator(void)
+47:                {
+0006C8  FA0000     LNK #0x0
+48:                    // Configure Oscillator to operate the device at 40Mhz
+49:                    // Fosc = Fin*M/(N1*N2), Fcy = Fosc/2
+50:                    // Fosc = 7.3728M*43/(2*2) = 80Mhz for 7.3728M input clock, Fcy=40Mhz
+51:                	PLLFBD=41;					// M=43
+0006CA  200290     MOV #0x29, W0
+0006CC  883A30     MOV W0, PLLFBD
+52:                	CLKDIVbits.PLLPOST=0;		// N1=2
+0006CE  803A21     MOV CLKDIV, W1
+0006D0  2FF3F0     MOV #0xFF3F, W0
+0006D2  608000     AND W1, W0, W0
+0006D4  883A20     MOV W0, CLKDIV
+53:                	CLKDIVbits.PLLPRE=0;		// N2=2
+0006D6  803A21     MOV CLKDIV, W1
+0006D8  2FFE00     MOV #0xFFE0, W0
+0006DA  608000     AND W1, W0, W0
+0006DC  883A20     MOV W0, CLKDIV
+54:                	OSCTUN=0x0015;              // Tune FRC oscillator 8Mhz, if FRC is used
+0006DE  200150     MOV #0x15, W0
+0006E0  883A40     MOV W0, OSCTUN
+55:                    // Disable Watch Dog Timer
+56:                	RCONbits.SWDTEN=0;
+0006E2  A9A740     BCLR RCON, #5
+57:                
+58:                    /*MPLAB® C Compiler for PIC24 MCUs and dsPIC DSCs provides the following built-in C language functions for unlocking and writing to the OSCCON register:*/
+59:                    //__builtin_write_OSCCONH(value)
+60:                    //__builtin_write_OSCCONL(value)
+61:                    /*See MPLAB C Compiler Help for more information.*/
+62:                    
+63:                    // Clock switch to incorporate PLL
+64:                	__builtin_write_OSCCONH(0x03);		// Initiate Clock Switch to Primary Oscillator with PLL (NOSC=0b011)
+0006E4  200032     MOV #0x3, W2
+0006E6  200780     MOV #0x78, W0
+0006E8  2009A1     MOV #0x9A, W1
+0006EA  207433     MOV #0x743, W3
+0006EC  784980     MOV.B W0, [W3]
+0006EE  784981     MOV.B W1, [W3]
+0006F0  784982     MOV.B W2, [W3]
+65:                	__builtin_write_OSCCONL(0x01);		// Start clock switching
+0006F2  200012     MOV #0x1, W2
+0006F4  200460     MOV #0x46, W0
+0006F6  200571     MOV #0x57, W1
+0006F8  207423     MOV #0x742, W3
+0006FA  784980     MOV.B W0, [W3]
+0006FC  784981     MOV.B W1, [W3]
+0006FE  784982     MOV.B W2, [W3]
+66:                    //OSCCONbits.NOSC=0b011;
+67:                    //OSCCONbits.OSWEN=1;
+68:                    //OSCCON=0x0301;
+69:                	while(OSCCONbits.COSC != 0b011);    // Wait for Clock switch to occur	
+000700  000000     NOP
+000702  803A11     MOV OSCCON, W1
+000704  270000     MOV #0x7000, W0
+000706  608080     AND W1, W0, W1
+000708  230000     MOV #0x3000, W0
+00070A  508F80     SUB W1, W0, [W15]
+00070C  3AFFFA     BRA NZ, 0x702
+70:                	while(OSCCONbits.LOCK !=1);         // Wait for PLL to lock, only if PLL is needed
+00070E  000000     NOP
+000710  803A11     MOV OSCCON, W1
+000712  200200     MOV #0x20, W0
+000714  608000     AND W1, W0, W0
+000716  E00000     CP0 W0
+000718  32FFFB     BRA Z, 0x710
+71:                    
+72:                
+73:                #if 0
+74:                        /* Disable Watch Dog Timer */
+75:                        RCONbits.SWDTEN = 0;
+76:                
+77:                        /* When clock switch occurs switch to Primary Osc (HS, XT, EC) */
+78:                        __builtin_write_OSCCONH(0x02);  /* Set OSCCONH for clock switch */
+79:                        __builtin_write_OSCCONL(0x01);  /* Start clock switching */
+80:                        while(OSCCONbits.COSC != 0b010);
+81:                        /* Wait for Clock switch to occur */
+82:                        /* Wait for PLL to lock, only if PLL is needed */
+83:                        /* while(OSCCONbits.LOCK != 1); */
+84:                #endif
+85:                }
+00071A  FA8000     ULNK
+00071C  060000     RETURN
+---  /home/dracula/MPLABXProjects/QEI/main.c  -----------------------------------------------------------
+1:                 /* 
+2:                  * File:   main.c   
+3:                  * Author: dracula
+4:                  * Comments:
+5:                  * Revision history: EDITION 0.1 
+6:                  */
+7:                 
+8:                 /******************************************************************************/
+9:                 /* Files to Include                                                           */
+10:                /******************************************************************************/
+11:                
+12:                /* Device header file, thus actually include <p33FJ128MC804.h> */
+13:                #if defined(__XC16__)
+14:                    #include <xc.h>
+15:                #elif defined(__C30__)
+16:                    #if defined(__dsPIC33E__)
+17:                    	#include <p33Exxxx.h>
+18:                    #elif defined(__dsPIC33F__)
+19:                    	#include <p33Fxxxx.h>
+20:                    #endif
+21:                #endif
+22:                
+23:                #include <stdint.h>        /* Includes uint16_t definition                    */
+24:                #include <stdbool.h>
+25:                //#include <p33FJ128MC804.h>       /* Includes true/false definition                  */
+26:                
+27:                #include "system.h"        /* System funct/params, like osc/peripheral config */
+28:                #include "user.h"          /* User funct/params, such as InitApp              */
+29:                
+30:                /* TODO DSPIC33FJ128MC804 Configuration Bit Settings*/
+31:                // 'C' source line config statements
+32:                // FBS
+33:                #pragma config BWRP = WRPROTECT_OFF     // Boot Segment Write Protect (Boot Segment may be written)
+34:                #pragma config BSS = NO_FLASH           // Boot Segment Program Flash Code Protection (No Boot program Flash segment)
+35:                #pragma config RBS = NO_RAM             // Boot Segment RAM Protection (No Boot RAM)
+36:                
+37:                // FSS
+38:                #pragma config SWRP = WRPROTECT_OFF     // Secure Segment Program Write Protect (Secure segment may be written)
+39:                #pragma config SSS = NO_FLASH           // Secure Segment Program Flash Code Protection (No Secure Segment)
+40:                #pragma config RSS = NO_RAM             // Secure Segment Data RAM Protection (No Secure RAM)
+41:                
+42:                // FGS
+43:                #pragma config GWRP = OFF               // General Code Segment Write Protect (User program memory is not write-protected)
+44:                #pragma config GSS = OFF                // General Segment Code Protection (User program memory is not code-protected)
+45:                
+46:                /*
+47:                _FOSCSEL(FNOSC_FRC);                                  // Select Internal FRC at POR
+48:                _FOSC(FCKSM_CSECMD & OSCIOFNC_OFF & POSCMD_XT);       // Enable Clock Switching and Configure Posc in XT mode
+49:                _FPOR(RST_PWMPIN & PWM1H_ACT_HI & PWM1L_ACT_HI);      // High and Low switches set to active-high state 
+50:                */
+51:                
+52:                // FOSCSEL
+53:                #pragma config FNOSC = PRI              // Primary Oscillator (XT, HS, EV))
+54:                #pragma config IESO = ON                // Internal External Switch Over Mode (Start-up device with FRC, then automatically switch to user-selected oscillator source when ready)
+55:                
+56:                // FOSC
+57:                #pragma config POSCMD = XT              // XT Oscillator Mode
+58:                #pragma config OSCIOFNC = OFF           // OSC2 Pin Function (OSC2 pin has clock out function)
+59:                #pragma config IOL1WAY = ON             // Peripheral Pin Select Configuration (Allow Only One Re-configuration)
+60:                #pragma config FCKSM = CSECMD           // This bit is extremely important? if set to CSDCMD there will be no PWM signal!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+61:                //#pragma config FCKSM = CSDCMD         // Clock Switching and Monitor (Both Clock Switching and Fail-Safe Clock Monitor are disabled)
+62:                
+63:                // FWDT
+64:                #pragma config WDTPOST = PS32768        // Watchdog Timer Postscaler (1:32,768)
+65:                #pragma config WDTPRE = PR128           // WDT Prescaler (1:128)
+66:                #pragma config WINDIS = OFF             // Watchdog Timer Window (Watchdog Timer in Non-Window mode)
+67:                #pragma config FWDTEN = OFF             // Watchdog Timer Enable (Watchdog timer always enabled)
+68:                
+69:                // FPOR
+70:                #pragma config FPWRT = PWR128           // POR Timer Value (128ms)
+71:                #pragma config ALTI2C = OFF             // Alternate I2C  pins (I2C mapped to SDA1/SCL1 pins)
+72:                #pragma config LPOL = ON                // Motor Control PWM Low Side Polarity bit (PWM module low side output pins have active-high output polarity)
+73:                #pragma config HPOL = ON                // Motor Control PWM High Side Polarity bit (PWM module high side output pins have active-high output polarity)
+74:                #pragma config PWMPIN = OFF             // Motor Control PWM Module Pin Mode bit (PWM module pins controlled by PORT register at device Reset)
+75:                
+76:                // FICD
+77:                #pragma config ICS = PGD3               // Comm Channel Select (Communicate on PGC3/EMUC3 and PGD3/EMUD3)
+78:                #pragma config JTAGEN = OFF             // JTAG Port Enable (JTAG is Disabled)
+79:                
+80:                /******************************************************************************/
+81:                /* Global Variable Declaration                                                */
+82:                /******************************************************************************/
+83:                /* i.e. uint16_t <variable_name>; */
+84:                /* Assign 32x8word Message Buffers for ECAN1 in DMA RAM */
+85:                unsigned int ecan1MsgBuf[32][8] __attribute__((space(dma)));
+86:                
+87:                char ReceivedChar;
+88:                char TransmitChar;
+89:                bool go = 0;
+90:                bool stop = 0;
+91:                bool direction = 0;
+92:                
+93:                int count[2]={0,0};
+94:                int motor = 0;
+95:                int i=0;
+96:                int position = 0;
+97:                int posHigh = 0;
+98:                //int posLow = 0;
+99:                int QEIPosHigh = 0;
+100:               int QEIPosLow = 0;
+101:               /******************************************************************************/
+102:               /* Main Program                                                               */
+103:               /******************************************************************************/
+104:               int main(void)
+105:               {   
+000604  FA0002     LNK #0x2
+106:                   
+107:                   /* Configure the oscillator for the device */
+108:                   ConfigureOscillator();
+000606  070060     RCALL ConfigureOscillator
+109:                   /* Initialize IO ports and peripherals */
+110:                   InitApp();
+000608  07FEEF     RCALL InitApp
+111:                   /* TODO <INSERT USER APPLICATION CODE HERE> */
+112:                
+113:                   while(1)
+114:                   {
+115:                       if(U1STAbits.PERR==1)
+00060A  801110     MOV U1STA, W0
+00060C  600068     AND W0, #0x8, W0
+00060E  E00000     CP0 W0
+000610  320001     BRA Z, 0x614
+116:                       {
+117:                           continue;
+000612  370059     BRA 0x6C6
+118:                       }
+119:                       if(U1STAbits.OERR==1)
+000614  801110     MOV U1STA, W0
+000616  600062     AND W0, #0x2, W0
+000618  E00000     CP0 W0
+00061A  320002     BRA Z, 0x620
+120:                       {
+121:                           //LATAbits.LATA0=1;
+122:                           U1STAbits.OERR=0;
+00061C  A92222     BCLR U1STA, #1
+123:                           //receivedNumber++;
+124:                           continue;
+00061E  370053     BRA 0x6C6
+125:                       }
+126:                       if(U1STAbits.URXDA==1)
+000620  801110     MOV U1STA, W0
+127:                       {   
+128:                           //LATAbits.LATA1=1;
+129:                       }
+130:                       if(stop){
+000622  BFC803     MOV.B stop, WREG
+000624  E00400     CP0.B W0
+000626  320001     BRA Z, 0x62A
+131:                       LATAbits.LATA7=1;
+000628  A8E2C4     BSET LATA, #7
+132:                       }
+133:                       
+134:                       if(go){
+00062A  BFC802     MOV.B go, WREG
+00062C  E00400     CP0.B W0
+00062E  320001     BRA Z, 0x632
+135:                       LATAbits.LATA7=0;
+000630  A9E2C4     BCLR LATA, #7
+136:                       }
+137:                         
+138:                       if(i==0)
+000632  804060     MOV i, W0
+000634  E00000     CP0 W0
+000636  3A000B     BRA NZ, 0x64E
+139:                       {            
+140:                           motor = count[0];
+000638  804030     MOV count, W0
+00063A  884050     MOV W0, motor
+141:                           motor = motor & 0x00FF;
+00063C  804051     MOV motor, W1
+00063E  200FF0     MOV #0xFF, W0
+000640  608000     AND W1, W0, W0
+000642  884050     MOV W0, motor
+142:                           motor = motor | (count[1]<<8);
+000644  804040     MOV 0x808, W0
+000646  DD00C8     SL W0, #8, W1
+000648  804050     MOV motor, W0
+00064A  700001     IOR W0, W1, W0
+00064C  884050     MOV W0, motor
+143:                       }
+144:                       
+145:                       {
+146:                           int temp=0;
+00064E  EB0000     CLR W0
+000650  780F00     MOV W0, [W14]
+147:                           temp = motor & 0x8000;
+000652  804051     MOV motor, W1
+000654  280000     MOV #0x8000, W0
+000656  608F00     AND W1, W0, [W14]
+148:                           if(temp)
+000658  78001E     MOV [W14], W0
+00065A  E00000     CP0 W0
+00065C  320006     BRA Z, 0x66A
+149:                           {
+150:                               motor=motor & 0x7fff ;
+00065E  804051     MOV motor, W1
+000660  27FFF0     MOV #0x7FFF, W0
+000662  608000     AND W1, W0, W0
+000664  884050     MOV W0, motor
+151:                               //motor[j]=~(motor[j]-1);
+152:                               direction=0;
+000666  EF6804     CLR.B direction
+000668  370002     BRA 0x66E
+153:                           }else{direction=1;}
+00066A  B3C010     MOV.B #0x1, W0
+00066C  B7E804     MOV.B WREG, direction
+154:                       }
+155:                       LATAbits.LATA10=direction;
+00066E  BFC804     MOV.B direction, WREG
+000670  FB8000     ZE W0, W0
+000672  600061     AND W0, #0x1, W0
+000674  DD004A     SL W0, #10, W0
+000676  801622     MOV LATA, W2
+000678  2FBFF1     MOV #0xFBFF, W1
+00067A  610081     AND W2, W1, W1
+00067C  700001     IOR W0, W1, W0
+00067E  881620     MOV W0, LATA
+156:                       P2DC1=(5*motor/3);
+000680  804050     MOV motor, W0
+000682  B90065     MUL.SU W0, #5, W0
+000684  780100     MOV W0, W2
+000686  255560     MOV #0x5556, W0
+000688  B99000     MUL.SS W2, W0, W0
+00068A  DE914F     ASR W2, #15, W2
+00068C  508002     SUB W1, W2, W0
+00068E  882EB0     MOV W0, P2DC1
+157:                       
+158:                       if(posHigh < 0)
+000690  804080     MOV posHigh, W0
+000692  E00000     CP0 W0
+000694  3D0008     BRA GE, 0x6A6
+159:                       {
+160:                           QEIPosHigh = (~posHigh) | 0x8000; 
+000696  804080     MOV posHigh, W0
+000698  EA8000     COM W0, W0
+00069A  A0F000     BSET W0, #15
+00069C  884090     MOV W0, QEIPosHigh
+161:                           QEIPosLow = (~POS1CNT +1);
+00069E  800F20     MOV POS1CNT, W0
+0006A0  EA0000     NEG W0, W0
+0006A2  8840A0     MOV W0, QEIPosLow
+0006A4  370006     BRA 0x6B2
+162:                       }
+163:                       else
+164:                       {
+165:                           QEIPosHigh = posHigh & 0x7fff;
+0006A6  804081     MOV posHigh, W1
+0006A8  27FFF0     MOV #0x7FFF, W0
+0006AA  608000     AND W1, W0, W0
+0006AC  884090     MOV W0, QEIPosHigh
+166:                           QEIPosLow = POS1CNT;
+0006AE  800F20     MOV POS1CNT, W0
+0006B0  8840A0     MOV W0, QEIPosLow
+167:                       }
+168:                       
+169:                       /* WRITE MESSAGE DATA BYTES */
+170:                       ecan1MsgBuf[0][3] = 0xabcd;
+0006B2  2ABCD0     MOV #0xABCD, W0
+0006B4  8A3030     MOV W0, 0x4606
+171:                       ecan1MsgBuf[0][4] = 0xabcd;
+0006B6  2ABCD0     MOV #0xABCD, W0
+0006B8  8A3040     MOV W0, 0x4608
+172:                       ecan1MsgBuf[0][5] = 0xabcd;
+0006BA  2ABCD0     MOV #0xABCD, W0
+0006BC  8A3050     MOV W0, 0x460A
+173:                       ecan1MsgBuf[0][6] = 0xabcd;
+0006BE  2ABCD0     MOV #0xABCD, W0
+0006C0  8A3060     MOV W0, 0x460C
+174:               
+175:                       /* REQUEST MESSAGE BUFFER 2 TRANSMISSION */
+176:                       C1TR01CONbits.TXREQ0 = 0x1;
+0006C2  A86430     BSET C1TR01CON, #3
+177:                       
+178:                   };
+0006C4  37FFA2     BRA 0x60A
+0006C6  37FFA1     BRA 0x60A
+179:               }
+180:               
+181:               void __attribute__((__interrupt__, auto_psv)) _U1RXInterrupt(void)
+182:               {
+0002C8  BE9F80     MOV.D W0, [W15++]
+0002CA  781F82     MOV W2, [W15++]
+0002CC  F80034     PUSH PSVPAG
+0002CE  200000     MOV #0x0, W0
+0002D0  8801A0     MOV W0, PSVPAG
+0002D2  FA0000     LNK #0x0
+183:                   ReceivedChar = U1RXREG;
+0002D4  801130     MOV U1RXREG, W0
+0002D6  784000     MOV.B W0, W0
+0002D8  B7E800     MOV.B WREG, ReceivedChar
+184:                   U1TXREG = ReceivedChar;
+0002DA  BFC800     MOV.B ReceivedChar, WREG
+0002DC  FB0000     SE W0, W0
+0002DE  881120     MOV W0, U1TXREG
+185:                   if(ReceivedChar == 'g'){go = 1;}
+0002E0  208001     MOV #0x800, W1
+0002E2  784091     MOV.B [W1], W1
+0002E4  B3C670     MOV.B #0x67, W0
+0002E6  50CF80     SUB.B W1, W0, [W15]
+0002E8  3A0003     BRA NZ, 0x2F0
+0002EA  B3C010     MOV.B #0x1, W0
+0002EC  B7E802     MOV.B WREG, go
+0002EE  370021     BRA 0x332
+186:                   else if(ReceivedChar == 's'){stop = 1; go = 0;}
+0002F0  208001     MOV #0x800, W1
+0002F2  784091     MOV.B [W1], W1
+0002F4  B3C730     MOV.B #0x73, W0
+0002F6  50CF80     SUB.B W1, W0, [W15]
+0002F8  3A0004     BRA NZ, 0x302
+0002FA  B3C010     MOV.B #0x1, W0
+0002FC  B7E803     MOV.B WREG, stop
+0002FE  EF6802     CLR.B go
+000300  370018     BRA 0x332
+187:                   else 
+188:                   {
+189:                       
+190:                   if(ReceivedChar == 'u'){ U1TXREG = 'u'; i = 0;}
+000302  208001     MOV #0x800, W1
+000304  784091     MOV.B [W1], W1
+000306  B3C750     MOV.B #0x75, W0
+000308  50CF80     SUB.B W1, W0, [W15]
+00030A  3A0004     BRA NZ, 0x314
+00030C  200750     MOV #0x75, W0
+00030E  881120     MOV W0, U1TXREG
+000310  EF280C     CLR i
+000312  37000F     BRA 0x332
+191:               
+192:                   else
+193:                   {
+194:                       count[i] = ReceivedChar;
+000314  804060     MOV i, W0
+000316  208001     MOV #0x800, W1
+000318  784091     MOV.B [W1], W1
+00031A  FB0081     SE W1, W1
+00031C  400100     ADD W0, W0, W2
+00031E  208060     MOV #0x806, W0
+000320  410000     ADD W2, W0, W0
+000322  780801     MOV W1, [W0]
+195:                       i++;
+000324  804060     MOV i, W0
+000326  E80000     INC W0, W0
+000328  884060     MOV W0, i
+196:                       if(i>=2) i = 0;
+00032A  804060     MOV i, W0
+00032C  500FE1     SUB W0, #0x1, [W15]
+00032E  340001     BRA LE, 0x332
+000330  EF280C     CLR i
+197:                   }
+198:                   
+199:                   }
+200:                   U1TXREG = QEIPosHigh >> 8;
+000332  804090     MOV QEIPosHigh, W0
+000334  DE8048     ASR W0, #8, W0
+000336  881120     MOV W0, U1TXREG
+201:                   U1TXREG = QEIPosHigh;
+000338  804090     MOV QEIPosHigh, W0
+00033A  881120     MOV W0, U1TXREG
+202:                   U1TXREG = QEIPosLow >> 8;
+00033C  8040A0     MOV QEIPosLow, W0
+00033E  DE8048     ASR W0, #8, W0
+000340  881120     MOV W0, U1TXREG
+203:                   U1TXREG = QEIPosLow;
+000342  8040A0     MOV QEIPosLow, W0
+000344  881120     MOV W0, U1TXREG
+204:                   IFS0bits.U1RXIF = 0;
+000346  A96085     BCLR 0x85, #3
+205:               }
+000348  FA8000     ULNK
+00034A  F90034     POP PSVPAG
+00034C  78014F     MOV [--W15], W2
+00034E  BE004F     MOV.D [--W15], W0
+000350  064000     RETFIE
+206:               
+207:               void __attribute__((interrupt, auto_psv)) _U1TXInterrupt(void)
+208:               {
+000352  F80034     PUSH PSVPAG
+000354  781F88     MOV W8, [W15++]
+000356  200008     MOV #0x0, W8
+000358  8801A8     MOV W8, PSVPAG
+00035A  78044F     MOV [--W15], W8
+00035C  FA0000     LNK #0x0
+209:                   IFS0bits.U1TXIF = 0; // clear TX interrupt flag
+00035E  A98085     BCLR 0x85, #4
+210:                   //U1TXREG = 'b'; // Transmit one character
+211:               }
+000360  FA8000     ULNK
+000362  F90034     POP PSVPAG
+000364  064000     RETFIE
+212:               
+213:               void __attribute__((interrupt, auto_psv)) _QEI1Interrupt(void)
+214:               {
+000366  BE9F80     MOV.D W0, [W15++]
+000368  F80034     PUSH PSVPAG
+00036A  200000     MOV #0x0, W0
+00036C  8801A0     MOV W0, PSVPAG
+00036E  FA0000     LNK #0x0
+215:                   U1TXREG = QEIPosHigh >> 8;
+000370  804090     MOV QEIPosHigh, W0
+000372  DE8048     ASR W0, #8, W0
+000374  881120     MOV W0, U1TXREG
+216:                   U1TXREG = QEIPosHigh;
+000376  804090     MOV QEIPosHigh, W0
+000378  881120     MOV W0, U1TXREG
+217:                   U1TXREG = QEIPosLow >> 8;
+00037A  8040A0     MOV QEIPosLow, W0
+00037C  DE8048     ASR W0, #8, W0
+00037E  881120     MOV W0, U1TXREG
+218:                   U1TXREG = QEIPosLow;
+000380  8040A0     MOV QEIPosLow, W0
+000382  881120     MOV W0, U1TXREG
+219:                   //U1TXREG = QEI1CONbits.UPDN;
+220:                   
+221:                   if(QEI1CONbits.UPDN == 1){posHigh += 1;}
+000384  800F01     MOV QEI1CON, W1
+000386  208000     MOV #0x800, W0
+000388  608000     AND W1, W0, W0
+00038A  E00000     CP0 W0
+00038C  320004     BRA Z, 0x396
+00038E  804080     MOV posHigh, W0
+000390  E80000     INC W0, W0
+000392  884080     MOV W0, posHigh
+000394  370003     BRA 0x39C
+222:                   else {posHigh -= 1;}
+000396  804080     MOV posHigh, W0
+000398  E90000     DEC W0, W0
+00039A  884080     MOV W0, posHigh
+223:                   IFS3bits.QEI1IF = 0;
+00039C  A9408B     BCLR 0x8B, #2
+224:               }
+00039E  FA8000     ULNK
+0003A0  F90034     POP PSVPAG
+0003A2  BE004F     MOV.D [--W15], W0
+0003A4  064000     RETFIE
+---  /home/dracula/MPLABXProjects/QEI/delay.c  ----------------------------------------------------------
+1:                 /* 
+2:                  * File:   delay.c   
+3:                  * Author: dracula
+4:                  * Comments:
+5:                  * Revision history: EDITION 0.1 
+6:                  */
+7:                 
+8:                 /******************************************************************************/
+9:                 /* Files to Include                                                           */
+10:                /******************************************************************************/
+11:                
+12:                /* Device header file */
+13:                #if defined(__XC16__)
+14:                    #include <xc.h>
+15:                #elif defined(__C30__)
+16:                    #if defined(__dsPIC33E__)
+17:                    	#include <p33Exxxx.h>
+18:                    #elif defined(__dsPIC33F__)
+19:                    	#include <p33Fxxxx.h>
+20:                    #endif
+21:                #endif
+22:                
+23:                /******************************************************************************/
+24:                /* User Functions                                                             */
+25:                /******************************************************************************/
+26:                
+27:                /* <Initialize variables in delay.h and insert code for user algorithms.> */
+28:                
+29:                #include "delay.h"
+30:                
+31:                unsigned int temp_count;
+32:                
+33:                #if defined(__dsPIC33F__)
+34:                
+35:                void Delay( unsigned int delay_count ) 
+36:                {
+00071E  FA0002     LNK #0x2
+000720  780F00     MOV W0, [W14]
+37:                	temp_count = delay_count +1;
+000722  E8001E     INC [W14], W0
+000724  8840B0     MOV W0, temp_count
+38:                	asm volatile("outer: dec _temp_count");	
+000726  ED2816     DEC temp_count
+39:                	asm volatile("cp0 _temp_count");
+000728  E20816     CP0 temp_count
+40:                	asm volatile("bra z, done");
+00072A  320005     BRA Z, done
+41:                	asm volatile("do #3200, inner" );	
+00072C  080C80     DO #3200, inner
+00072E  000001     NOP
+42:                	asm volatile("nop");
+000730  000000     NOP
+43:                	asm volatile("inner: nop");
+000732  000000     NOP
+44:                	asm volatile("bra outer");
+000734  37FFF8     BRA outer
+45:                	asm volatile("done:");
+46:                }
+000736  FA8000     ULNK
+000738  060000     RETURN
+47:                	
+48:                
+49:                void Delay_Us( unsigned int delayUs_count )
+50:                {
+00073A  FA0002     LNK #0x2
+00073C  780F00     MOV W0, [W14]
+51:                	temp_count = delayUs_count +1;
+00073E  E8001E     INC [W14], W0
+000740  8840B0     MOV W0, temp_count
+52:                	asm volatile("outer1: dec _temp_count");	
+000742  ED2816     DEC temp_count
+53:                	asm volatile("cp0 _temp_count");
+000744  E20816     CP0 temp_count
+54:                	asm volatile("bra z, done1");
+000746  320005     BRA Z, done1
+55:                	asm volatile("do #1500, inner1" );	
+000748  0805DC     DO #1500, inner1
+00074A  000001     NOP
+56:                	asm volatile("nop");
+00074C  000000     NOP
+57:                	asm volatile("inner1: nop");
+00074E  000000     NOP
+58:                	asm volatile("bra outer1");
+000750  37FFF8     BRA outer1
+59:                	asm volatile("done1:");
+60:                }		
+000752  FA8000     ULNK
+000754  060000     RETURN
+61:                #elif defined(__PIC24H__)
+62:                void Delay( unsigned int delay_count ) 
+63:                {
+64:                	temp_count = delay_count +1;
+65:                	asm volatile("outer: dec _temp_count");	
+66:                	asm volatile("cp0 _temp_count");
+67:                	asm volatile("bra z, done");
+68:                	asm volatile("repeat #3200" );	
+69:                	asm volatile("nop");
+70:                	asm volatile("repeat #3200" );	
+71:                	asm volatile("nop");
+72:                	asm volatile("bra outer");
+73:                	asm volatile("done:");
+74:                }
+75:                	
+76:                
+77:                void Delay_Us( unsigned int delayUs_count )
+78:                {
+79:                	temp_count = delayUs_count +1;
+80:                	asm volatile("outer1: dec _temp_count");	
+81:                	asm volatile("cp0 _temp_count");
+82:                	asm volatile("bra z, done1");
+83:                	asm volatile("repeat #1500" );	
+84:                	asm volatile("nop");
+85:                	asm volatile("repeat #1500" );	
+86:                	asm volatile("nop");
+87:                	asm volatile("bra outer1");
+88:                	asm volatile("done1:");
+89:                }
+90:                
+91:                #endif
